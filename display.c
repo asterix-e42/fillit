@@ -6,79 +6,86 @@
 /*   By: tdumouli <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2016/11/05 20:14:19 by tdumouli          #+#    #+#             */
-/*   Updated: 2016/11/18 08:14:37 by tdumouli         ###   ########.fr       */
+/*   Updated: 2016/12/02 02:35:54 by gcollett         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <fcntl.h>
-#include <unistd.h>
-#include<stdio.h>
-int		verrif_piece(char *str, int y);
+#include "fillit.h"
+
 int		main(int ac, char **av)
 {
-	int		fd;
-	char	buf[20];
-	int		rd;
+	t_dlist	*mem;
+	char	**result;
 
-	if (ac == 1)
-	{
-		write(2, "File name missing.\n", 19);
-		return (1);
-	}
 	if (ac != 2)
 	{
-		write(2, "Too many arguments\n", 19);
+		write(1, "usage : ./fillit tetriminos_file\n", 33);
+		return (1);
+	}
+	if (!(mem = verrif_envoie(av[1])))
+	{
+		write(1, "error\n", 6);
 		return (2);
 	}
-	if (!(fd = open(av[1], O_RDONLY)))
-		return (3);
-	rd = 1;
-	while(rd && ((rd = read(fd, buf, 20)) != -1))
-	{
-		printf("%d", rd);
-		if (rd != 20)
-			return (1);
-		if (verrif_piece(buf, 20))
-			write(1, "ok\n", 3);
-		else
-			write(1, "ko\n", 3);
-		write(1, buf, 20);
-		rd = read(fd, buf, 1);
-		printf(" i%di ", rd);
-	}
+	result = my_little_polygone(&mem);
+	while (le_truc_recursif(mem, result))
+		if (re_dynamique_allocation(result))
+			return (2);
+	print_little_square(result);
 	return (0);
 }
 
-int		verrif_piece(char *str, int size)
+t_dlist	*verrif_envoie(char *doc)
 {
-	char parcourt;
-	char min;
-	char max;
-	
-	min = -1;
-	max = -1;
-	parcourt = -1;
-	while (++parcourt != size)
-	{
-		if ((((parcourt) % 5 == 4) || parcourt == 20))
-		{
-			if (*(str + parcourt) != '\n')
-				return (0);
-		}
-		else
-		{
-			if (*(str + parcourt) != '.' && *(str + parcourt) != '#')
-				return (0);
-		}
-		if (*(str + parcourt) == '#')
-		{
-			if (min = -1)
-				min = parcourt;
-			else if (min + 1 == parcourt)
-				max = parcourt;
+	int		fd;
+	char	buf[20];
+	t_dlist	*mem;
+	int		rd;
+	char	*bite;
 
-		}	
-		write(1, parcourt + str, 1);
+	mem = NULL;
+	if (!(fd = open(doc, O_RDONLY)))
+		return (NULL);
+	rd = 1;
+	bite = malloc(2);
+	while (rd && ((rd = read(fd, buf, 20)) != -1))
+	{
+		if (rd != 20)
+			return (NULL);
+		*bite = 0;
+		if (!verrif_piece(buf, 20, bite))
+			return (NULL);
+		ft_dlstadd(&mem, bite, 3);
+		rd = read(fd, buf, 1);
 	}
-	return (1);
+	return (mem);
+}
+
+int		verrif_piece(char *str, int size, char *bite)
+{
+	char parcours;
+	char nb_lien;
+	char nb_carre;
+
+	nb_lien = 0;
+	nb_carre = 0;
+	parcours = -1;
+	while (++parcours != size)
+	{
+		if ((parcours) % 5 == 4)
+		{
+			if (*(str + parcours) != '\n')
+				return (0);
+			if (parcours == 9)
+				bite++;
+		}
+		else if (*(str + parcours) != '.' && *(str + parcours) != '#')
+			return (0);
+		else
+			*bite = *bite * 2 + (*(str + parcours) == '#');
+		if (*(str + parcours) == '#' && ++nb_carre)
+			nb_lien += (*(str + parcours + 1) == '#') + \
+						(parcours < 15 && *(str + parcours + 5) == '#');
+	}
+	return ((nb_carre == 4) && (nb_lien == 3 || nb_lien == 4));
 }
